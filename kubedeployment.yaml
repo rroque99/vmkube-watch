@@ -1,27 +1,12 @@
 apiVersion: v1
-kind: Namespace
-metadata:
-  name: k8s-papivot-tools
-  labels:
-    name: k8s-papivot-tools
-    app: k8s-papivot-tools
----
-apiVersion: v1
 kind: ServiceAccount
 metadata:
-  name: k8s-obj-dump-sa
-  namespace: k8s-papivot-tools
-  labels:
-    name: k8s-obj-dump
-    app: k8s-obj-dump
+  name: vmkube-watch-sa
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
-  name: k8s-obj-dump-cr
-  labels:
-    app: k8s-obj-dump
-    name: k8s-obj-dump
+  name: vmkube-watch-cr
 rules:
   - apiGroups:
     - '*'
@@ -35,34 +20,27 @@ rules:
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
 metadata:
-  name: k8s-obj-dump-crb
-  labels:
-    app: k8s-obj-dump
-    name: k8s-obj-dump
+  name: vmkube-watch-crb
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: ClusterRole
-  name: k8s-obj-dump-cr
+  name: vmkube-watch-cr
 subjects:
 - kind: ServiceAccount
-  name: k8s-obj-dump-sa
+  name: vmkube-watch-sa
   namespace: k8s-papivot-tools
 ---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  labels:
-    name: k8s-obj-dump
-    app: k8s-obj-dump
-  name: k8s-obj-dump-deployment
-  namespace: k8s-papivot-tools
+  name: vmkube-watch-deployment
 spec:
   progressDeadlineSeconds: 600
   replicas: 1
   revisionHistoryLimit: 10
   selector:
     matchLabels:
-      app: k8s-obj-dump
+      app: vmkube-watch
       version: v1
   strategy:
     rollingUpdate:
@@ -72,7 +50,7 @@ spec:
   template:
     metadata:
       labels:
-        app: k8s-obj-dump
+        app: vmkube-watch
         version: v1
     spec:
       containers:
@@ -82,22 +60,21 @@ spec:
         - name: GROUPANDVERSION
           valueFrom:
             configMapKeyRef:
-              name: game-config-env-file
+              name: vmkube-watch-cm
               key: groupversion
         - name: RESOURCETYPE
           valueFrom:
             configMapKeyRef:
-              name: game-config-env-file
+              name: vmkube-watch-cm
               key: resourcetype
         - name: NAMESPACE
           valueFrom:
             configMapKeyRef:
-              name: game-config-env-file
+              name: vmkube-watch-cm
               key: namespace
-#          value: ""
         image: us-central1-docker.pkg.dev/navneet-410819/whoami6443-hub/whoami6443/vmkube-watch:0.0.7
         imagePullPolicy: Always
-        name: k8s-obj-dump
+        name: vmkube-watch
         resources:
           limits:
             cpu: 100m
@@ -113,11 +90,11 @@ spec:
           runAsUser: 10001
         volumeMounts:
         - mountPath: /app/deleted
-          name: config-volume1
+          name: config-volume-deleted
         - mountPath: /app/modified
-          name: config-volume2
+          name: config-volume-modified
         - mountPath: /app/added
-          name: config-volume3
+          name: config-volume-added
         - mountPath: /user/appuser
           name: cache-volume
         terminationMessagePath: /dev/termination-log
@@ -125,23 +102,23 @@ spec:
         stdin: true
         tty: true
       volumes:
-      - name: config-volume1
+      - name: config-volume-deleted
         configMap:
-          name: game-config-env-file
+          name: vmkube-watch-cm
           defaultMode: 0755
           items:
           - key: deleted1.sh
             path: deleted1.sh     
-      - name: config-volume2
+      - name: config-volume-modified
         configMap:
-          name: game-config-env-file
+          name: vmkube-watch-cm
           defaultMode: 0755
           items:
           - key: mod1.sh
             path: mod1.sh     
-      - name: config-volume3
+      - name: config-volume-added
         configMap:
-          name: game-config-env-file
+          name: vmkube-watch-cm
           defaultMode: 0755
           items:
           - key: added1.sh
@@ -151,15 +128,14 @@ spec:
       dnsPolicy: ClusterFirst
       schedulerName: default-scheduler
       securityContext: {}
-      serviceAccount: k8s-obj-dump-sa
-      serviceAccountName: k8s-obj-dump-sa
+      serviceAccount: vmkube-watch-sa
+      serviceAccountName: vmkube-watch-sa
       terminationGracePeriodSeconds: 30
 ---
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: game-config-env-file
-  namespace: k8s-papivot-tools
+  name: vmkube-watch-cm
 data:
   groupversion: "v1"
   resourcetype: "services"
