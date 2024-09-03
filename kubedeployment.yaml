@@ -28,6 +28,9 @@ roleRef:
 subjects:
 - kind: ServiceAccount
   name: vmkube-watch-sa
+###
+# Modify the namespace
+###
   namespace: vmkube-watch
 ---
 apiVersion: apps/v1
