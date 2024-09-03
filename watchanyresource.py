@@ -1,5 +1,6 @@
 import os
 import json
+import time
 import urllib3
 import requests
 import websocket, ssl
@@ -102,28 +103,32 @@ def main():
 
     uri = api_path+'/'+api_obj
     print("Connecting to - "+k8s_host+"/"+uri)
-
-    init_res_version_data = get_kubeapi_request(k8s_session,k8s_host + '/' + uri, k8s_headers)
-    if init_res_version_data:
-        resource_version=init_res_version_data['metadata']['resourceVersion']
-        # print(resource_version)
-    else:
-        print("error: Unable to get the default resource version. Exiting...")
-        exit
     
-    cmd_opt='resourceVersion='+resource_version+'&allowWatchBookmarks=false&watch=true'
-    ws_stream = get_kubeapi_request_streaming(k8s_host.replace("https://","wss://") + '/' + uri + '?' + cmd_opt,k8s_headers)
-
     while True:
+        init_res_version_data = get_kubeapi_request(k8s_session,k8s_host + '/' + uri, k8s_headers)
+        if init_res_version_data:
+            resource_version=init_res_version_data['metadata']['resourceVersion']
+            # print(resource_version)
+        else:
+            print("error: Unable to get the default resource version. Exiting...")
+            exit
+        cmd_opt='resourceVersion='+resource_version+'&allowWatchBookmarks=false&watch=true'
         try:
-            msg = ws_stream.recv()
-            if msg:
-                x = threading.Thread(target=handleMsgThread, args=(msg,))
-                x.start()
-        except Exception as e:
-            print(e)
-            break
-#            ws_stream = get_kubeapi_request_streaming(k8s_host.replace("https://","wss://") + '/' + uri + '?' + cmd_opt,k8s_headers)                      
+            ws_stream = get_kubeapi_request_streaming(k8s_host.replace("https://","wss://") + '/' + uri + '?' + cmd_opt,k8s_headers)
+            while True:
+                try:
+                    msg = ws_stream.recv()
+                    if msg:
+                        x = threading.Thread(target=handleMsgThread, args=(msg,))
+                        x.start()
+                except Exception as e:
+                    print("Exception occured while waiting for msg.")
+                    print(e)
+                    break
+        except Exception as ex:
+            print("Exception occured while connecting to websocket. Sleeping for 5 secs before retrying...")
+            print(ex)
+            time.sleep(5)
 
 if __name__ == "__main__":
     main()
